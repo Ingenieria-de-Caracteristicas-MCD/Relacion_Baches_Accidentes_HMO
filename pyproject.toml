@@ -1,0 +1,8 @@
+[project]
+name = "RELACION_BACHES_ACCIDENTES_HMO"
+version = "0.1.0"
+description = "Análisis de la relación entre la presencia de baches y los accidentes automovilísticos en Hermosillo."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+]
