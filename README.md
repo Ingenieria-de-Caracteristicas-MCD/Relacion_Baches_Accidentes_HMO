@@ -1,6 +1,9 @@
-![Logo de la Maestría](mcd.png) 
+<img src="miscellaneous/mcd.png" alt="Logo de la Maestría" width="150"/> 
+
 # Relacion_Baches_Accidentes_HMO 
-![Logo del Bachómetro](bachometro.svg)
+
+<img src="miscellaneous/bachometro.svg" alt="Logo del Bachómetro" width="1000"/>
+
 **Análisis Exploratorio de Datos (EDA) sobre la relación entre reportes de baches y accidentes de tránsito en la ciudad de Hermosillo (HMO), Sonora, México.**
 
 Este proyecto explora la correlación espacial y temporal entre la ubicación de baches reportados (fuente **Bachómetro**) y los accidentes de tránsito registrados (**INEGI**), incorporando datos de **clima** de **Open Meteo** y tareas de **geocodificación** mediante **Google Maps API**. El objetivo es identificar patrones y zonas de riesgo para contribuir a una mejor toma de decisiones en la gestión urbana.
