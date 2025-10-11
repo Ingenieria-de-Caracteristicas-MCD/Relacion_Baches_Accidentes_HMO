@@ -9,7 +9,7 @@ Uso:
     python download_atus.py
 
 Descarga los archivos correspondientes a los años 2021–2023 en paralelo,
-valida su integridad (ZIP válido) y los guarda en RAW_DIR/atus.
+valida su integridad (ZIP válido) y los guarda en data/raw/atus.
 """
 
 
@@ -101,18 +101,19 @@ def shoot_parallel_download(zip_urls, downloader=download_zip):
 def download_atus():
     zip_urls = [URL_2021, URL_2022, URL_2023]
     start = datetime.now()
-    logger.info(f'Inicia proceso de descarga...\n')
+    logger.info(f'Inicia proceso de descarga: \n')
 
     zip_paths = shoot_parallel_download(zip_urls)
 
     end = datetime.now()
     elapsed = (end - start).total_seconds()
-    logger.info(f'\nProceso de descarga finalizado en {elapsed:.2f} s')
+    print()
+    logger.info(f'Proceso de descarga finalizado en {elapsed:.2f} s\n')
 
-    logger.info("\nArchivos descargados:")
+    logger.info("Archivos descargados:")
     for z in zip_paths:
-        logger.info(f" - {z.relative_to(ROOT_DIR)}")
-    
+        print(f" - {z.relative_to(ROOT_DIR)}")
+    print()
     return zip_paths
  
 
