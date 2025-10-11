@@ -3,7 +3,7 @@ import logging
 import colorlog
 
 # Rutas base
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
@@ -17,7 +17,7 @@ def init_paths():
 def get_logger(name):
     handler = colorlog.StreamHandler()
     handler.setFormatter(colorlog.ColoredFormatter(
-        "%(log_color)s%(asctime)s-%(levelname)s-%(name)s-%(message)s",
+        "%(log_color)s%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         log_colors={
             'DEBUG':    'cyan',
             'INFO':     'green',
