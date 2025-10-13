@@ -13,8 +13,8 @@ valida su integridad (ZIP válido) y los guarda en data/raw/atus.
 """
 
 
-from src.config import ROOT_DIR, RAW_DIR, get_logger
-from src.utils import download_zip
+from config import ROOT_DIR, RAW_DIR, get_logger
+from utils import download_zip
 
 from itertools import repeat
 from datetime import datetime

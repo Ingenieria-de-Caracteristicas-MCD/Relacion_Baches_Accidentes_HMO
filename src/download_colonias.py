@@ -10,8 +10,8 @@ Uso:
 Descarga el archivo ZIP, valida su integridad y lo guarda en data/raw/geo/colonias.
 """
 
-from src.config import ROOT_DIR, RAW_DIR, get_logger
-from src.utils import download_zip
+from config import ROOT_DIR, RAW_DIR, get_logger
+from utils import download_zip
 
 from datetime import datetime
 from pathlib import Path

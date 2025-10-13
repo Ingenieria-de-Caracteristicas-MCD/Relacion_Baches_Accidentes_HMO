@@ -4,7 +4,7 @@ extract_vialidades.py
 ...
 """
 
-from src.config import ROOT_DIR, INTERIM_DIR, get_logger
+from config import ROOT_DIR, INTERIM_DIR, get_logger
 
 from datetime import datetime
 from pathlib import Path

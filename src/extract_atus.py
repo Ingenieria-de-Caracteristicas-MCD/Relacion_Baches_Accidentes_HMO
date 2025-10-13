@@ -4,9 +4,9 @@ extract_atus.py
 ...
 """
 
-from src.config import ROOT_DIR, INTERIM_DIR, get_logger
-from src.utils import extract_zip_file, extract_all_zips, get_zip_paths
-from src.download_atus import ATUS_DIR
+from config import ROOT_DIR, INTERIM_DIR, get_logger
+from utils import extract_zip_file, extract_all_zips, get_zip_paths
+from download_atus import ATUS_DIR
 
 from shutil import rmtree
 from pathlib import Path

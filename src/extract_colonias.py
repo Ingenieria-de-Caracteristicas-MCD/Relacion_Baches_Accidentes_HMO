@@ -8,9 +8,9 @@ correspondientes a Hermosillo, Sonora (CVE_ENT=26, CVE_MUN=30, CVE_LOC=0001).
 Guarda los resultados filtrados en data/interim/geo.
 """
 
-from src.config import ROOT_DIR, RAW_DIR, INTERIM_DIR, get_logger
-from src.utils import extract_zip_file, extract_all_zips, get_zip_paths
-from src.download_colonias import COLONIAS_DIR
+from config import ROOT_DIR, RAW_DIR, INTERIM_DIR, get_logger
+from utils import extract_zip_file, extract_all_zips, get_zip_paths
+from download_colonias import COLONIAS_DIR
 
 from shutil import rmtree
 from pathlib import Path
