@@ -69,3 +69,40 @@ def download_zip(url: str, output_dir: Path, chunk_size: int = 1024 * 1024):
     except requests.RequestException as e:
         logger.exception(f"Error al descargar {url}: {e}")
         return None
+
+
+def extract_zip_file(zip_path: Path, output_path: Path = None):
+    """
+    Extrae un archivo ZIP al directorio especificado.
+    """
+    if not output_path:
+        output_path = zip_path.parent / zip_path.stem
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(path=output_path)
+        return output_path, True
+    except zipfile.BadZipFile:
+        logger.exception(f"ZIP corrupto: {zip_path.relative_to(ROOT_DIR)}")
+        return output_path, False
+
+
+def extract_all_zips(zip_paths, output_base_dir: Path = None):
+    """
+    Extrae múltiples archivos ZIP.
+    """
+    extracted = []
+    for zip_path in zip_paths:
+        out_dir = (output_base_dir or zip_path.parent) / zip_path.stem
+        output_path, valid = extract_zip_file(zip_path, out_dir)
+        if valid:
+            extracted.append(output_path)
+            logger.info(f"ZIP {zip_path.name} extraído -> {output_path.relative_to(ROOT_DIR)}")
+    return extracted
+
+
+def get_zip_paths(dirpath: Path):
+    """
+    Retorna todas las rutas ZIP dentro de un directorio.
+    """
+    return [p for p in dirpath.iterdir() if p.suffix.lower() == ".zip"]
