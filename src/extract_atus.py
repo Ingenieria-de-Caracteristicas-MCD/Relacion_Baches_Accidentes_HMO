@@ -4,10 +4,10 @@ extract_atus.py
 ...
 """
 
-from config import ROOT_DIR, DATA_DIR, RAW_DIR, INTERIM_DIR, get_logger
-from download_atus import ATUS_DIR
+from src.config import ROOT_DIR, INTERIM_DIR, get_logger
+from src.utils import extract_zip_file, extract_all_zips, get_zip_paths
+from src.download_atus import ATUS_DIR
 
-import zipfile
 from shutil import rmtree
 from pathlib import Path
 from datetime import datetime
@@ -21,43 +21,6 @@ INTERIM_ATUS_DIR.mkdir(exist_ok=True)
 
 # logger
 logger = get_logger(Path(__file__).name)
-
-
-def extract_zip_file(zip_path: Path, output_path=None):
-    if not output_path: 
-        filename = zip_path.stem
-        output_path = ATUS_DIR / filename
-
-    try: 
-        with zipfile.ZipFile(zip_path, 'r') as zf: 
-            zf.extractall(path=output_path)
-        
-        return output_path, True
-    
-    except zipfile.BadZipFile: 
-        logger.exception(f'ZIP corrupto: {zip_path.relative_to(ROOT_DIR)}')
-        return output_path, False
-
-
-def extract_all_zips(zip_paths):
-    extracted_paths = []
-    for zip_path in zip_paths:
-        extracted_path, valid = extract_zip_file(zip_path)
-        if valid: 
-            extracted_paths.append(extracted_path)
-            logger.info(f'Archivo ZIP {zip_path.relative_to(ROOT_DIR)} descomprimido -> {extracted_path.relative_to(ROOT_DIR)}\n')
-            
-    return extracted_paths
-
-
-def get_zip_paths(dirpath=ATUS_DIR):
-    paths = [] 
-    # logger.debug(f'trol get_zip_paths:  {type(dirpath)}, {dirpath}')
-    for item in dirpath.iterdir():
-        # logger.debug(item)  # OK
-        if item.suffix == '.zip':
-            paths.append(item)    
-    return paths
 
 
 def filter_hermosillo_records(csv_path):
@@ -95,22 +58,21 @@ def process_extraction_atus_hmo(clean=False):
     start = datetime.now()
     logger.info(f'Inicia proceso de exrtacción:\n')
     
-    zip_paths = get_zip_paths()    
-    # logger.debug(zip_paths)
+    zip_paths = get_zip_paths(ATUS_DIR)    
     extracted_paths = extract_all_zips(zip_paths)
+    print()
     paths_atus_hmo = filter_all_csvs(extracted_paths)
 
     end = datetime.now()
     elapsed = (end - start).total_seconds()
-    logger.info(f'Proceso de descarga finalizado en {elapsed:.2f} s\n')
-
-    logger.info('Archivos procesados:')
-    for p in paths_atus_hmo:
-        print(' - {p.relative_to(ROOT_DIR)}')
     print()
+    logger.info(f'Proceso de extracción completado en {elapsed:.2f} s\n')
+
     if clean: 
         rmtree(path=ATUS_DIR)
-
+        logger.info(f"Directorio {ATUS_DIR.relative_to(ROOT_DIR)} eliminado\n")
+    
+    return paths_atus_hmo
 
 if __name__ == '__main__':
     processed_files = process_extraction_atus_hmo(clean=True)
