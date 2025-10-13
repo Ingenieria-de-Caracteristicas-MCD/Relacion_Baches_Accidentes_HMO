@@ -9,6 +9,7 @@ Guarda los resultados filtrados en data/interim/geo.
 """
 
 from src.config import ROOT_DIR, RAW_DIR, INTERIM_DIR, get_logger
+from src.utils import extract_zip_file, extract_all_zips, get_zip_paths
 from src.download_colonias import COLONIAS_DIR
 
 from shutil import rmtree
@@ -25,35 +26,6 @@ INTERIM_GEO_DIR.mkdir(exist_ok=True)
 
 # Logger
 logger = get_logger(Path(__file__).name)
-
-
-def extract_zip_file(zip_path: Path, output_path=None):
-    if not output_path:
-        filename = zip_path.stem
-        output_path = COLONIAS_DIR / filename
-
-    try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            zf.extractall(path=output_path)
-        return output_path, True
-
-    except zipfile.BadZipFile:
-        logger.exception(f"ZIP corrupto: {zip_path.relative_to(ROOT_DIR)}")
-        return output_path, False
-
-
-def extract_all_zips(zip_paths):
-    extracted = []
-    for zip_path in zip_paths:
-        outpath, valid = extract_zip_file(zip_path)
-        if valid:
-            extracted.append(outpath)
-            logger.info(f"ZIP {zip_path.name} extraído -> {outpath.relative_to(ROOT_DIR)}")
-    return extracted
-
-
-def get_zip_paths(dirpath=COLONIAS_DIR):
-    return [p for p in dirpath.iterdir() if p.suffix == ".zip"]
 
 
 def get_shp_path(extracted_dir):
@@ -73,30 +45,31 @@ def filter_hermosillo_colonias(shp_path):
     outpath = INTERIM_GEO_DIR / "colonias_hmo.geojson"
     gdf_hmo_urb.to_file(outpath, driver="GeoJSON")
 
-    logger.info(f"Colonias de Hermosillo filtradas -> {outpath.relative_to(ROOT_DIR)}")
+    logger.info(f"Archivo {shp_path.relative_to(ROOT_DIR)} filtrado -> {outpath.relative_to(ROOT_DIR)}")
     return outpath
 
 
 def process_extraction_colonias(clean=False):
     start = datetime.now()
-    logger.info("Inicia proceso de extracción de Colonias\n")
+    logger.info("Inicia proceso de extracción: \n")
 
-    zip_paths = get_zip_paths()
+    zip_paths = get_zip_paths(dirpath=COLONIAS_DIR)
     extracted_paths = extract_all_zips(zip_paths)
 
     for extracted_dir in extracted_paths:
         shp_path = get_shp_path(extracted_dir)
         if shp_path:
-            filter_hermosillo_colonias(shp_path)
+            path_colonias_hmo = filter_hermosillo_colonias(shp_path)
 
     elapsed = (datetime.now() - start).total_seconds()
-    logger.info(f"Proceso completado en {elapsed:.2f} s\n")
+    print()
+    logger.info(f"Proceso de extracción completado en {elapsed:.2f} s\n")
 
     if clean:
         rmtree(path=COLONIAS_DIR)
-        print(f"Directorio {COLONIAS_DIR.relative_to(ROOT_DIR)} eliminado")
+        logger.info(f"Directorio {COLONIAS_DIR.relative_to(ROOT_DIR)} eliminado\n")
     
-    return 
+    return path_colonias_hmo
 
 if __name__ == "__main__":
     process_extraction_colonias(clean=True)
