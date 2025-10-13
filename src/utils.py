@@ -4,7 +4,7 @@ utils.py
 Funciones utilitarias para la descarga y validación de archivos ZIP
 """
 
-from src.config import ROOT_DIR, get_logger
+from config import ROOT_DIR, get_logger
 
 import zipfile
 from pathlib import Path
