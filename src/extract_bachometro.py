@@ -62,7 +62,6 @@ class Bachometro:
                 # print('trol', combined)  OK 
                 full_data.append(combined)
                 i +=1
-                if i == 100: break
 
             except requests.HTTPError as e: 
                 print(f"Error al ibener los detalles de ID: {bache_id}")
@@ -184,6 +183,6 @@ def main(years=None):
     print('\nProceso completado. ')
 
 if __name__ == '__main__':
-    main([2021])  # OK
+    main([2022])  # OK
     # main([2021, 2022, 2023])  OK
     # main()  # OK
