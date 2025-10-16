@@ -7,7 +7,7 @@ Uso:
     python download_clima.py
 
 Descarga los archivos correspondientes a los años 2021–2023 en un solo archivo
-.CSv y los guarda en data/raw/clima. El archivo .txt se guarda directamente en la carpeta data/.
+.CSV y los guarda en data/raw/clima. El archivo .txt se guarda directamente en la carpeta data/.
 """
 
 import openmeteo_requests
@@ -41,8 +41,8 @@ DATA_URL_1 = "https://open-meteo.com/en/docs/archive-api"
 RAW_DATA_PATH = RAW_DIR / "clima_hermosillo.csv"
 
 # ***************************************************************
-# RUTA MODIFICADA: Se usa DATA_DIR (que apunta a 'data/') para el archivo .txt
-DOC_FILE_PATH = DATA_DIR / "data_sources_metadata.txt" 
+# Se usa DATA_DIR (que apunta a 'data/raw') para el archivo .txt
+RAW_METADATA_PATH = RAW_DIR / "info_descargas_clima.txt"
 # ***************************************************************
 
 
@@ -129,9 +129,9 @@ def generate_documentation():
     - **Formato de los Datos:** CSV
 """
 
-    with open(DOC_FILE_PATH, "w") as f:
+    with open(RAW_METADATA_PATH , "w") as f:
         f.write(doc_content)
-    logger.info(f"Documentación de fuentes generada en: {DOC_FILE_PATH}")
+    logger.info(f"Documentación de fuentes generada en: {RAW_METADATA_PATH }")
 
 
 # --- 4. EJECUCIÓN PRINCIPAL ---
