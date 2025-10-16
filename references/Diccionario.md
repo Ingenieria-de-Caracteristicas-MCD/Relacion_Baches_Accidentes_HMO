@@ -17,16 +17,20 @@ Los datos no provienen de una estación meteorológica física, sino de un **mod
 
 ### Variables del Dataset de Clima
 
-| Nombre Final | Nombre de la API | Unidad | Descripción |
-| :--- | :--- | :--- | :--- |
-| **fecha** | `date` | UTC Timestamp | Fecha y hora de la medición horaria. |
-| **temperatura** | `temperature_2m` | °C | Temperatura del aire a 2 metros sobre la superficie (redondeado a 1 decimal). |
-| **humedad** | `relative_humidity_2m` | % | Humedad relativa del aire a 2 metros sobre la superficie (redondeado a 1 decimal). |
-| **precipitacion** | `precipitation` | mm | Lluvia, nieve u otras formas de precipitación total acumulada (redondeado a 1 decimal). |
-| **velocidad_viento** | `wind_speed_10m` | km/h | Velocidad del viento medida a 10 metros sobre la superficie (redondeado a 1 decimal). |
-| **nubosidad** | `cloud_cover` | % | Porcentaje total de cielo cubierto por nubes (redondeado a 1 decimal). |
-| **codigo_clima** | `weather_code` | Código WMO | Código que describe las condiciones meteorológicas generales. |
-| **es_de_dia** | `is_day` | Binario (0/1) | Indicador que determina si es de día (1) o de noche (0). |
+### Variables del Dataset de Clima
+
+### Variables del Dataset de Clima
+
+| Nombre Final | Nombre de la API | Tipo de Dato | Unidad | Descripción |
+| :--- | :--- | :--- | :--- | :--- |
+| **fecha** | `date` | `datetime` | UTC Timestamp | Fecha y hora de la medición horaria (usado como índice). |
+| **temperatura** | `temperature_2m` | `float` | °C | Temperatura del aire a 2 metros sobre la superficie (redondeado a 1 decimal). |
+| **humedad** | `relative_humidity_2m` | `float` | % | Humedad relativa del aire a 2 metros sobre la superficie (redondeado a 1 decimal). |
+| **precipitacion** | `precipitation` | `float` | mm | Lluvia, nieve u otras formas de precipitación total acumulada (redondeado a 1 decimal). |
+| **velocidad_viento** | `wind_speed_10m` | `float` | km/h | Velocidad del viento medida a 10 metros sobre la superficie (redondeado a 1 decimal). |
+| **nubosidad** | `cloud_cover` | `float` | % | Porcentaje total de cielo cubierto por nubes (redondeado a 1 decimal). |
+| **codigo_clima** | `weather_code` | `int` | Código WMO | Código entero que describe las condiciones meteorológicas generales. **[Referencia WMO aquí](https://www.open-meteo.com/en/docs/archive-api#weather_code_wmo)** |
+| **es_de_dia** | `is_day` | `bool` (Binario) | (0/1) | Indicador que determina si es de día (1) o de noche (0). |
 
 ---
 
