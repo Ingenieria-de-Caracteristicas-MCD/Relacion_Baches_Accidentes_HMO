@@ -1,3 +1,12 @@
+"""
+Script para extraer datos del sistema Bachómetro del municipio de Hermosillo.
+
+Este módulo permite scrapear información sobre reportes de baches incluyendo
+su ubicación, estado, fechas de reporte/atención, materiales utilizados e imágenes.
+Los datos se obtienen mediante requests a la API del sitio web y se procesan
+con BeautifulSoup para el parsing de HTML.
+"""
+
 import re
 import json
 from pathlib import Path
@@ -5,26 +14,46 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
+# Configuración de rutas para almacenamiento de datos
+ROOT = Path().resolve()  # Directorio raíz del proyecto
+DATA = ROOT / "data"     # Directorio para datos procesados
+RAW = DATA / "raw"       # Directorio para datos crudos sin procesar
 
-ROOT = Path().resolve()
-DATA = ROOT / "data"
-RAW = DATA / "raw"
-
+# URL base del sitio del Bachómetro
 BASE_URL = "https://bachometro.hermosillo.gob.mx/"
 
 class Bachometro:
+    """
+    Cliente para interactuar con la API del Bachómetro de Hermosillo.
+    
+    Maneja la autenticación, sesiones y extracción de datos sobre baches.
+    """
+    
     def __init__(self):
+        """Inicializa el cliente con una sesión persistente y token CSRF."""
         self.session = requests.Session()
         self.csrf_token = None
         self._init_session()
     
     def _init_session(self):
+        """
+        Inicializa la sesión obteniendo el token CSRF necesario para las peticiones.
+        
+        Realiza una petición inicial a la página principal y extrae el token
+        CSRF desde las meta etiquetas del HTML.
+        """
         r = self.session.get(BASE_URL)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')
         self.csrf_token = soup.find('meta', {'name': 'csrf-token'})['content']
 
     def _headers(self):
+        """
+        Genera los headers HTTP necesarios para las peticiones a la API.
+        
+        Returns:
+            dict: Headers con User-Agent, tokens CSRF y tipos de contenido aceptados.
+        """
         return {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
             'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -34,56 +63,94 @@ class Bachometro:
         }
 
     def get_baches(self, year):
+        """
+        Obtiene la lista de baches reportados para un año específico.
+        
+        Args:
+            year (int): Año del cual obtener los reportes de baches.
+            
+        Returns:
+            list: Lista de diccionarios con información básica de cada bache.
+        """
         url = BASE_URL + "mapa/ajax"
         r = self.session.get(url, headers=self._headers(), params={'year': year})
         r.raise_for_status()
         return r.json()
 
     def get_bache_details(self, bache_id: int):
+        """
+        Obtiene los detalles específicos de un bache mediante su ID.
+        
+        Args:
+            bache_id (int): Identificador único del bache.
+            
+        Returns:
+            str: HTML con la información detallada del bache.
+        """
         url = BASE_URL + "mapa/bache/ajax"
         r = self.session.post(url, headers=self._headers(), data={'id': bache_id})
         r.raise_for_status()
         return r.text
     
-    def get_full_dataset(self, year, parser_func): 
+    def get_full_dataset(self, year, parser_func):
+        """
+        Obtiene el dataset completo de baches para un año, combinando información
+        básica con detalles específicos de cada reporte.
+        
+        Args:
+            year (int): Año del cual obtener los datos.
+            parser_func (function): Función para parsear el HTML de detalles.
+            
+        Returns:
+            list: Lista de diccionarios con información completa de cada bache.
+        """
         full_data = []
         baches = self.get_baches(year)
-        # print('trol: ', baches[0])  # OK
+        
         i = 0
         for b in baches: 
             bache_id = b.get('id')
-            # print('trol', bache_id)  # OK
             try: 
+                # Obtiene HTML con detalles del bache
                 html = self.get_bache_details(bache_id)
+                # Parsea el HTML para extraer información estructurada
                 details = parser_func(html)
 
-                # bache actual + detalles
+                # Combina información básica con detalles específicos
                 combined = {**b, **details}
-                # print('trol', combined)  OK 
                 full_data.append(combined)
-                i +=1
+                i += 1
 
             except requests.HTTPError as e: 
-                print(f"Error al ibener los detalles de ID: {bache_id}")
+                print(f"Error al obtener los detalles de ID: {bache_id}")
                 print(e)
                 continue
         
         return full_data
 
 def parse_bache_details(html):
+    """
+    Parsea el HTML de detalles de un bache para extraer información estructurada.
+    
+    Args:
+        html (str): Contenido HTML con los detalles del bache.
+        
+    Returns:
+        dict: Diccionario con toda la información parseada del bache.
+    """
     soup = BeautifulSoup(html, 'html.parser')
 
     # Estructura base con todas las claves esperadas
     data = {
-        'no_reparemos': None,
-        'folio': None,
-        'fecha_reporte': None,
-        'fecha_atencion': None,
-        'material': None,
-        'colonia': None,
-        'direccion': None,
-        'descripcion': None,
-        'imagenes': [],
+        'no_reparemos': None,    # Número de reporte en el sistema #ReparemosHermosillo
+        'folio': None,           # Folio único del reporte
+        'fecha_reporte': None,   # Fecha en que se reportó el bache
+        'fecha_atencion': None,  # Fecha en que se atendió el bache
+        'material': None,        # Material utilizado en la reparación
+        'colonia': None,         # Colonia donde se ubica el bache
+        'direccion': None,       # Dirección específica del bache
+        'descripcion': None,     # Descripción del problema
+        'imagenes': [],          # URLs de imágenes del bache
     }
 
     # Encabezado principal (No. #ReparemosHermosillo)
@@ -98,7 +165,7 @@ def parse_bache_details(html):
         if folio:
             data['folio'] = folio.get_text(strip=True)
 
-    # Fechas
+    # Fechas - Extrae fechas de reporte y atención
     fecha_reporte = soup.find('strong', string=lambda s: s and 'Reporte' in s)
     if fecha_reporte and fecha_reporte.next_sibling:
         data['fecha_reporte'] = fecha_reporte.next_sibling.strip()
@@ -107,35 +174,35 @@ def parse_bache_details(html):
     if fecha_atencion and fecha_atencion.next_sibling:
         data['fecha_atencion'] = fecha_atencion.next_sibling.strip()
 
-    # Material
+    # Material - Tipo de material usado en la reparación
     material = soup.find('strong', string=lambda s: s and 'Material' in s)
     if material:
         span = material.find_next('span')
         if span:
             data['material'] = span.get_text(strip=True)
 
-    # Colonia
+    # Colonia - Ubicación por colonia
     colonia = soup.find('strong', string=lambda s: s and 'Colonia' in s)
     if colonia:
         data['colonia'] = (
             colonia.parent.get_text(strip=True).replace('Colonias:', '').strip()
         )
 
-    # Dirección
+    # Dirección - Ubicación específica
     direccion = soup.find('strong', string=lambda s: s and 'Dirección' in s)
     if direccion:
         data['direccion'] = (
             direccion.parent.get_text(strip=True).replace('Dirección:', '').strip()
         )
 
-    # Descripción
+    # Descripción - Detalles adicionales del reporte
     descripcion = soup.find('strong', string=lambda s: s and 'Descripción' in s)
     if descripcion:
         data['descripcion'] = (
             descripcion.parent.get_text(strip=True).replace('Descripción:', '').strip()
         )
 
-    # Imágenes
+    # Imágenes - Extrae todas las URLs de imágenes del bache
     imgs = soup.find_all('img', src=True)
     if imgs:
         data['imagenes'] = [img['src'] for img in imgs]
@@ -143,10 +210,19 @@ def parse_bache_details(html):
     return data
 
 
-def get_available_years(): 
+def get_available_years():
+    """
+    Obtiene los años disponibles con datos en el sistema Bachómetro.
+    
+    Realiza scraping de los botones de año en la interfaz del mapa.
+    
+    Returns:
+        list: Lista de años disponibles como enteros.
+    """
     try: 
         r = requests.get(BASE_URL)
         soup = BeautifulSoup(r.text, features='html.parser')
+        # Encuentra todos los botones de selección de año
         year_buttons = soup.select('#map_slider button.btnYear')
         available_years = [int(btn['id']) for btn in year_buttons]
         return available_years
@@ -156,16 +232,25 @@ def get_available_years():
         return []
 
 
-def main(years=None): 
-
+def main(years=None):
+    """
+    Función principal que orquesta la extracción de datos del Bachómetro.
+    
+    Args:
+        years (list, optional): Lista de años a procesar. Si es None, 
+                               obtiene todos los años disponibles.
+    """
+    # Si no se especifican años, obtiene los disponibles automáticamente
     if years is None: 
         years = get_available_years()
 
     client = Bachometro()
 
+    # Crea directorio de salida si no existe
     output_dir = RAW 
     output_dir.mkdir(exist_ok=True, parents=True)
 
+    # Procesa cada año solicitado
     for year in years: 
         print(f'\nObteniendo datos del año {year}...')
         dataset = client.get_full_dataset(year, parse_bache_details)
@@ -174,15 +259,15 @@ def main(years=None):
             print(f'Error al obtener los datos del año {year}, siguiente...')
             continue
         
+        # Guarda los datos en archivo JSON
         output_file = output_dir / f"baches_{year}.json"
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(dataset, f, indent=2)        
         
-        print(f'Datos guardatos en: {output_file.relative_to(ROOT)}')
+        print(f'Datos guardados en: {output_file.relative_to(ROOT)}')
     
-    print('\nProceso completado. ')
+    print('\nProceso completado.')
 
 if __name__ == '__main__':
-    main([2022])  # OK
-    # main([2021, 2022, 2023])  OK
-    # main()  # OK
+    # Ejecuta el proceso para los años 2021-2025
+    main([2021, 2022, 2023, 2024, 2025])
