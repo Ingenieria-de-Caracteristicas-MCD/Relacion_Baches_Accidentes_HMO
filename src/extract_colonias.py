@@ -51,7 +51,7 @@ def filter_hermosillo_colonias(shp_path):
 
 def process_extraction_colonias(clean=False):
     start = datetime.now()
-    logger.info("Inicia proceso de extracción: \n")
+    logger.info("Inicia proceso de extracción (Colonias): ")
 
     zip_paths = get_zip_paths(dirpath=COLONIAS_DIR)
     extracted_paths = extract_all_zips(zip_paths)
@@ -63,13 +63,13 @@ def process_extraction_colonias(clean=False):
 
     elapsed = (datetime.now() - start).total_seconds()
     print()
-    logger.info(f"Proceso de extracción completado en {elapsed:.2f} s\n")
+    logger.info(f"Proceso de extracción completado en {elapsed:.2f} s")
 
     if clean:
         rmtree(path=COLONIAS_DIR)
-        logger.info(f"Directorio {COLONIAS_DIR.relative_to(ROOT_DIR)} eliminado\n")
+        logger.info(f"Directorio {COLONIAS_DIR.relative_to(ROOT_DIR)} eliminado")
     
     return path_colonias_hmo
 
 if __name__ == "__main__":
-    process_extraction_colonias(clean=True)
+    process_extraction_colonias()

@@ -57,15 +57,15 @@ Fuente: OpenStreetMap (vía OSMnx)
 
 def download_hmo_roads(network_type="drive", simplify=True):
     place = "Hermosillo, Sonora, México"
-    logger.info(f"Descargando red vial de {place} (tipo={network_type})...\n")
+    logger.info(f"Descargando red vial de {place} (tipo={network_type})...")
 
     G = ox.graph_from_place(place, network_type=network_type, simplify=simplify)
 
-    logger.info("Descarga completada\n")
+    logger.info("Descarga completada")
     return G
 
 def export_graph_to_shapefiles(G, output_dir=INTERIM_GEO_DIR): 
-    logger.info("Convirtiendo grafo a GeoDataFrames...\n")
+    logger.info("Convirtiendo grafo a GeoDataFrames...")
     nodes, edges = ox.graph_to_gdfs(G)
 
     edges_path = output_dir / "hermosillo_edges.shp"
@@ -101,4 +101,4 @@ def process_extraction_roads_hmo():
 
 
 if __name__ == "__main__":
-    _, _ = process_extraction_roads_hmo()
+    process_extraction_roads_hmo()

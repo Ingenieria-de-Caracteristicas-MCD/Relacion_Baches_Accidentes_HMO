@@ -48,7 +48,7 @@ def filter_all_csvs(paths):
     paths_atus_hmo = []
     for csv_path in csv_paths: 
         outpath = filter_hermosillo_records(csv_path)
-        logger.info(f'Archivo {csv_path.relative_to(ROOT_DIR)} filtrado -> {outpath.relative_to(ROOT_DIR)}\n')
+        logger.info(f'Archivo {csv_path.relative_to(ROOT_DIR)} filtrado -> {outpath.relative_to(ROOT_DIR)}')
         paths_atus_hmo.append(outpath)            
 
     return paths_atus_hmo
@@ -56,7 +56,7 @@ def filter_all_csvs(paths):
 
 def process_extraction_atus_hmo(clean=False):
     start = datetime.now()
-    logger.info(f'Inicia proceso de exrtacción:\n')
+    logger.info(f'Inicia proceso de exrtacción:')
     
     zip_paths = get_zip_paths(ATUS_DIR)    
     extracted_paths = extract_all_zips(zip_paths)
@@ -66,13 +66,13 @@ def process_extraction_atus_hmo(clean=False):
     end = datetime.now()
     elapsed = (end - start).total_seconds()
     print()
-    logger.info(f'Proceso de extracción completado en {elapsed:.2f} s\n')
+    logger.info(f'Proceso de extracción completado en {elapsed:.2f} s')
 
     if clean: 
         rmtree(path=ATUS_DIR)
-        logger.info(f"Directorio {ATUS_DIR.relative_to(ROOT_DIR)} eliminado\n")
+        logger.info(f"Directorio {ATUS_DIR.relative_to(ROOT_DIR)} eliminado")
     
     return paths_atus_hmo
 
 if __name__ == '__main__':
-    processed_files = process_extraction_atus_hmo(clean=True)
+    process_extraction_atus_hmo()
