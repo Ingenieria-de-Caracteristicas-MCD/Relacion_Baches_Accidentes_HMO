@@ -44,10 +44,31 @@ Esta sección se completará una vez que se extraigan las variables específicas
 
 ## 3. Datos de Reportes de Baches (Bachómetro)
 
-Esta sección se completará una vez que se extraigan las variables del Bachómetro. Es crucial definir las variables de ubicación y tiempo para poder hacer la unión con las otras fuentes.
+### Naturaleza del Origen
+
+La fuente de datos de baches es el **Bachómetro Municipal de Hermosillo**, un sistema implementado por el municipio para el reporte, seguimiento y atención de baches en la vía pública.
+
+Los datos representan reportes ciudadanos verificados por el municipio y contienen información geográfica, temporal y descriptiva de cada bache reportado.
+
+* **Frecuencia:** Los datos se actualizan en tiempo real según reportes ciudadanos.
+* **Cobertura:** Todo el municipio de Hermosillo, Sonora.
+* **Formato Original:** JSON a través de API web.
+
+### Variables del Dataset de Baches
 
 | Nombre Final | Nombre de Origen | Tipo de Dato | Descripción |
 | :--- | :--- | :--- | :--- |
-| **[PENDIENTE]** | [Origen en Bachómetro] | [int/str] | [Descripción de la variable clave: Coordenada X, Coordenada Y, Fecha de Reporte, Estatus] |
-| **[PENDIENTE]** | [Origen en Bachómetro] | [int/str] | [Ejemplo: Estatus de bacheo] |
-| **[PENDIENTE]** | [Origen en Bachómetro] | [int/str] | [Ejemplo: Fecha de reporte] |
+| **latitude** | `latitude` | float | Latitud geográfica del bache en sistema WGS84. |
+| **longitude** | `longitude` | float | Longitud geográfica del bache en sistema WGS84. |
+| **id** | `id` | int | Identificador único del reporte de bache en el sistema municipal. |
+| **folio** | `folio` | float | Folio único del reporte municipal (puede contener decimales por formato de exportación). |
+| **fecha_reporte** | `fecha_reporte` | date | Fecha en que se reportó el bache (formato YYYY-MM-DD). |
+| **fecha_atencion** | `fecha_atencion` | date | Fecha en que el bache fue atendido (formato YYYY-MM-DD, puede estar vacío si no ha sido atendido). |
+| **colonia** | `colonia` | str | Nombre de la colonia donde se ubica el bache. |
+| **direccion** | `direccion` | str | Dirección específica del bache. |
+
+**Notas sobre los datos de baches:**
+- Las fechas de atención pueden estar vacías si el bache no ha sido atendido.
+- Las coordenadas están en sistema WGS84 (latitud/longitud) y son precisas para análisis geoespacial.
+- El campo `folio` puede contener valores decimales debido al formato de exportación del sistema municipal.
+- Los datos incluyen reportes desde 2021 hasta la fecha actual.
