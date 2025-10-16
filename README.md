@@ -99,6 +99,8 @@ El producto de datos final (el tablero o `informe.pdf`) está destinado a orient
 │
 └── baches_vs_accidentes_eda <- Código fuente del proyecto
 ├── python-version <- Versión de python utilizada en el proyecto
+├── requirements.txt <- Librerias utilizadas en el proyecto
+├── run_extraction.sh <- Comando de consola para descargar datos
 └── pyproject.toml <- Librerias a utilizar e el proyecto
 ```
 
@@ -170,6 +172,24 @@ Para comenzar a trabajar en este proyecto, sigue estos pasos para configurar tu 
     Dentro de VS Code, usa **Cmd+Shift+P** y selecciona **Python: Select Interpreter** para elegir la ruta `./.venv/bin/python`.
 
 ---
+
+---
+
+## Descarga y Extracción de Datos 
+
+Una vez que el entorno virtual (`.venv`) esté activado e instalado, puedes ejecutar el script de extracción para descargar los datos de las fuentes originales y procesarlos en el directorio `data/raw`.
+
+### Ejecutar el Script de Extracción:
+
+1.  Asegúrate de estar en el directorio raíz del proyecto (`Relacion_Baches_Accidentes_HMO`) y que tu entorno virtual esté **activo**.
+
+2.  Corre el siguiente comando en tu terminal:
+
+    ```bash
+    ./run_extraction.sh
+    ```
+
+    **Nota:** Este comando ejecutará una serie de scripts de Python para obtener datos de fuentes externas (ATUS, Clima, etc.) y guardarlos localmente.
 
 ## Contacto
 
