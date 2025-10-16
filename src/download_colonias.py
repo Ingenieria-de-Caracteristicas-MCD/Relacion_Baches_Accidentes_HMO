@@ -34,20 +34,43 @@ logger = get_logger(Path(__file__).name)
 URL_COLONIAS = r"https://www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/bvinegi/productos/geografia/delimitaciones/794551132180_s.zip"
 
 
+def generate_documentation_colonias():
+    doc_content = f"""
+# DESCRIPCIÓN DE FUENTES DE DATOS - COLONIAS INEGI
+
+Fuente: Delimitaciones Geoestadísticas (Colonias)
+- Nombre de la Fuente: Delimitaciones Geoestadísticas (Colonias)
+- Institución: INEGI
+- Enlace: {URL_COLONIAS}
+- Fecha de Descarga: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+- Ubicación: México
+- Formato de los Datos: ZIP (contiene archivos Shapefile)
+- Descripción de los Datos:
+    Conjunto de delimitaciones espaciales de colonias urbanas a nivel nacional, 
+    usadas para análisis geográficos y de ubicación territorial.
+"""
+
+    doc_path = RAW_DIR / "documentacion_colonias.txt"
+    with open(doc_path, "w", encoding="utf-8") as f:
+        f.write(doc_content)
+    logger.info(f"Documentación de fuentes generada en: {doc_path}")
+
+
 def download_colonias():
     start = datetime.now()
-    logger.info("Inicia proceso de descarga de Colonias (INEGI)\n")
+    logger.info("Inicia proceso de descarga de Colonias (INEGI)")
 
     zip_path = download_zip(URL_COLONIAS, COLONIAS_DIR)
 
     elapsed = (datetime.now() - start).total_seconds()
 
-    logger.info(f"Descarga finalizada en {elapsed:.2f} s\n")
+    logger.info(f"Descarga finalizada en {elapsed:.2f} s")
+
+    generate_documentation_colonias()
 
     logger.info("Archivos descargados:")
     if zip_path:
         print(f" - {zip_path.relative_to(ROOT_DIR)}")
-    print()
 
     return zip_path
 

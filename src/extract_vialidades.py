@@ -4,7 +4,7 @@ extract_vialidades.py
 ...
 """
 
-from config import ROOT_DIR, INTERIM_DIR, get_logger
+from config import RAW_DIR, ROOT_DIR, INTERIM_DIR, get_logger
 
 from datetime import datetime
 from pathlib import Path
@@ -29,6 +29,30 @@ logger = get_logger(Path(__file__).name)
 ox.settings.use_cache = True
 ox.settings.cache_folder = str(CACHE_DIR)
 ox.settings.log_console = False  # Cambir a False
+
+
+def generate_documentation_vialidades():
+    doc_content = f"""
+# DESCRIPCIÓN DE FUENTES DE DATOS - VIALIDADES HMO
+
+Fuente: OpenStreetMap (vía OSMnx)
+- Nombre de la Fuente: Red vial de Hermosillo
+- Herramienta de Extracción: OSMnx (https://osmnx.readthedocs.io/)
+- Lugar: Hermosillo, Sonora, México
+- Tipo de Red: drive
+- Fecha de Extracción: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+- Descripción de los Datos:
+    Red vial obtenida desde OpenStreetMap, que incluye nodos (intersecciones)
+    y edges (segmentos de calle) para análisis de conectividad y movilidad urbana.
+- Archivos Generados:
+    - hermosillo_nodes.shp
+    - hermosillo_edges.shp
+- Formato de los Datos: Shapefile (GeoDataFrame)
+"""
+    doc_path = RAW_DIR / "documentacion_vialidades.txt"
+    with open(doc_path, "w", encoding="utf-8") as f:
+        f.write(doc_content)
+    logger.info(f"Documentación de fuentes generada en: {doc_path}")
 
 
 def download_hmo_roads(network_type="drive", simplify=True):
@@ -65,13 +89,14 @@ def process_extraction_roads_hmo():
 
     end = datetime.now()
     elapsed = (end - start).total_seconds()
-    logger.info(f"Proceso finalizado en {elapsed:.2f} s\n")
+    logger.info(f"Proceso finalizado en {elapsed:.2f} s")
+
+    generate_documentation_vialidades()
 
     logger.info("Archivos generados en:")
     for p in INTERIM_GEO_DIR.glob("*.shp"):
         print(f" - {p.relative_to(ROOT_DIR)}")
-    print()
-
+        
     return nodes_path, edges_path
 
 
