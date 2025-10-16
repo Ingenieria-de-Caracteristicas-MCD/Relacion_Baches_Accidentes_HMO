@@ -10,7 +10,7 @@ con BeautifulSoup para el parsing de HTML.
 import re
 import json
 from pathlib import Path
-
+from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
@@ -21,6 +21,124 @@ RAW = DATA / "raw"       # Directorio para datos crudos sin procesar
 
 # URL base del sitio del Bachómetro
 BASE_URL = "https://bachometro.hermosillo.gob.mx/"
+
+# Configuración del archivo de log
+LOG_FILE = RAW / "info_descarga_datos_bachometro.txt"
+
+def crear_log_descarga(years, total_registros):
+    """
+    Crea un archivo de log con información descriptiva de los datos descargados.
+    
+    Args:
+        years (list): Lista de años descargados
+        total_registros (int): Número total de registros obtenidos
+    """
+    fecha_descarga = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    contenido_log = f"""
+INFORMACIÓN DE DESCARGA - SISTEMA BACHÓMETRO HERMOSILLO
+========================================================
+
+FECHA DE DESCARGA: {fecha_descarga}
+AÑOS DESCARGADOS: {', '.join(map(str, years))}
+TOTAL DE REGISTROS OBTENIDOS: {total_registros}
+
+DESCRIPCIÓN DE LAS FUENTES DE DATOS
+====================================
+
+FUENTE PRINCIPAL: Bachómetro Municipal de Hermosillo
+URL: https://bachometro.hermosillo.gob.mx/
+
+NATURALEZA DE LOS DATOS:
+------------------------
+El Bachómetro es un sistema implementado por el municipio de Hermosillo, Sonora,
+para el reporte, seguimiento y atención de baches en la vía pública. Los datos
+incluyen:
+
+1. DATOS GEOGRÁFICOS:
+   - Coordenadas de ubicación (latitud, longitud)
+   - Colonia y dirección específica
+   - Zona de la ciudad
+
+2. DATOS TEMPORALES:
+   - Fecha de reporte del bache por ciudadanos
+   - Fecha de atención por parte del municipio
+   - Año de registro en el sistema
+
+3. DATOS DESCRIPTIVOS:
+   - Número de reporte (#ReparemosHermosillo)
+   - Folio único de identificación
+   - Material utilizado en la reparación
+   - Descripción del problema reportado
+   - Imágenes del bache (antes/durante/después de la reparación)
+
+4. METADATOS TÉCNICOS:
+   - ID único del registro
+   - Estado del reporte
+   - Información de categorización
+
+ENLACES Y REFERENCIAS:
+----------------------
+- Sitio oficial: https://bachometro.hermosillo.gob.mx/
+- Aplicación móvil: Disponible en tiendas de aplicaciones
+- Programa #ReparemosHermosillo: Iniciativa ciudadana-municipal
+
+PROPÓSITO DEL DATASET:
+----------------------
+Este dataset permite analizar:
+- Patrones temporales y espaciales de baches en Hermosillo
+- Eficiencia en los tiempos de respuesta del municipio
+- Distribución geográfica de problemas de infraestructura vial
+- Estacionalidad en la aparición de baches
+- Impacto de factores climáticos en la infraestructura vial
+
+ESTRUCTURA DE ARCHIVOS:
+-----------------------
+- Formato: JSON para datos crudos, CSV para datos procesados
+- Codificación: UTF-8
+- Frecuencia de actualización: Diaria (según reportes ciudadanos)
+- Periodo histórico disponible: Desde 2021 hasta actualidad
+
+NOTAS TÉCNICAS:
+---------------
+- Los datos se obtienen mediante scraping de la API pública del sistema
+- Se utiliza token CSRF para autenticación en las peticiones
+- Las imágenes están almacenadas en servidores municipales
+- Coordenadas en sistema WGS84 (lat/lon)
+
+CONTACTO Y MÁS INFORMACIÓN:
+---------------------------
+- Municipio de Hermosillo: https://hermosillo.gob.mx/
+- Dirección de Obras Públicas: Responsable del mantenimiento vial
+- App #ReparemosHermosillo: Para reportar baches desde móviles
+
+========================================================
+LOG DE DESCARGA COMPLETADO: {fecha_descarga}
+"""
+    
+    with open(LOG_FILE, 'w', encoding='utf-8') as f:
+        f.write(contenido_log)
+    
+    print(f"Archivo de log creado: {LOG_FILE}")
+
+def actualizar_log_progreso(year, registros_year, estado="completado"):
+    """
+    Actualiza el log con el progreso de descarga por año.
+    
+    Args:
+        year (int): Año siendo procesado
+        registros_year (int): Número de registros obtenidos para el año
+        estado (str): Estado del proceso ('completado', 'error', 'en_progreso')
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    with open(LOG_FILE, 'a', encoding='utf-8') as f:
+        if estado == "en_progreso":
+            f.write(f"\n[{timestamp}] INICIANDO descarga para año {year}\n")
+        elif estado == "completado":
+            f.write(f"[{timestamp}] COMPLETADO año {year}: {registros_year} registros\n")
+        elif estado == "error":
+            f.write(f"[{timestamp}] ERROR en año {year}: 0 registros\n")
 
 class Bachometro:
     """
@@ -106,6 +224,9 @@ class Bachometro:
         """
         full_data = []
         baches = self.get_baches(year)
+        
+        # Actualizar log con progreso
+        actualizar_log_progreso(year, len(baches), "en_progreso")
         
         i = 0
         for b in baches: 
@@ -250,6 +371,9 @@ def main(years=None):
     output_dir = RAW 
     output_dir.mkdir(exist_ok=True, parents=True)
 
+    total_registros = 0
+    años_procesados = []
+
     # Procesa cada año solicitado
     for year in years: 
         print(f'\nObteniendo datos del año {year}...')
@@ -257,16 +381,26 @@ def main(years=None):
 
         if not dataset: 
             print(f'Error al obtener los datos del año {year}, siguiente...')
+            actualizar_log_progreso(year, 0, "error")
             continue
         
         # Guarda los datos en archivo JSON
         output_file = output_dir / f"baches_{year}.json"
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(dataset, f, indent=2)        
+            json.dump(dataset, f, indent=2, ensure_ascii=False)        
         
         print(f'Datos guardados en: {output_file.relative_to(ROOT)}')
+        
+        # Actualizar contadores para el log
+        total_registros += len(dataset)
+        años_procesados.append(year)
+        actualizar_log_progreso(year, len(dataset), "completado")
     
-    print('\nProceso completado.')
+    # Crear archivo de log final con toda la información
+    crear_log_descarga(años_procesados, total_registros)
+    
+    print(f'\nProceso completado. Total de registros: {total_registros}')
+    print(f'Log de descarga guardado en: {LOG_FILE}')
 
 if __name__ == '__main__':
     # Ejecuta el proceso para los años 2021-2025
