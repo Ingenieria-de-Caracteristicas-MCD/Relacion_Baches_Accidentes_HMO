@@ -4,6 +4,10 @@
 
 <img src="miscellaneous/bachometro.svg" alt="Logo del Bachómetro" width="1000"/>
 
+<a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
+    <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
+</a>
+
 **Análisis Exploratorio de Datos (EDA) sobre la relación entre reportes de baches y accidentes de tránsito en la ciudad de Hermosillo (HMO), Sonora, México.**
 
 Este proyecto explora la correlación espacial y temporal entre la ubicación de baches reportados (fuente **Bachómetro**) y los accidentes de tránsito registrados (**INEGI**), incorporando datos de **clima** de **Open Meteo**. El objetivo es identificar patrones y zonas de riesgo para contribuir a una mejor toma de decisiones en la gestión urbana.
@@ -51,6 +55,8 @@ El producto de datos final (el tablero o `informe.pdf`) está destinado a orient
 
 ## Estructura del Proyecto
 ```
+
+
 ├── LICENSE <- Licencia del proyecto
 ├── README.md <- Este archivo, descripción general del proyecto
 │
@@ -64,9 +70,10 @@ El producto de datos final (el tablero o `informe.pdf`) está destinado a orient
 │
 ├── notebooks <- Jupyter Notebooks con el flujo de trabajo
 │ ├── experimentos <- Pruebas preliminares
-│ ├── 1.0-extraccion-datos.ipynb <- Descarga de datos desde APIs y archivos
-│ ├── 2.0-limpieza-integracion.ipynb <- Limpieza e integración de fuentes
-│ ├── 3.0-analisis-exploratorio.ipynb <- Visualizaciones y estadísticas descriptivas
+│ ├── 1.1-limpieza-integracion_clima <- Limpieza e integración de datos del clima
+│ ├── 1.2-limpieza-integracion_bachometro.ipynb <- Limpieza e integración de datos del bachometro
+│ ├── 1.3-limpieza-integracion_ATUS.ipynb <- Limpieza e integración de datos del ATUS
+│ ├── 2.0-analisis-exploratorio.ipynb <- Visualizaciones y estadísticas descriptivas
 │ └── 4.0-reporte-final.ipynb <- Resultados y conclusiones
 │
 ├── references <- Diccionarios de datos y referencias de APIs
@@ -78,12 +85,17 @@ El producto de datos final (el tablero o `informe.pdf`) está destinado a orient
 ├── requirements.txt <- Dependencias del proyecto
 │
 └── src <- Scripts de automatización
+│ ├── __init__.py <- Define el directorio como paquete de Python.
+│ ├── clean_atus.py <- Script para la limpieza de datos de choques (ATUS).
+│ ├── cleaning_data_bachometro.py <- Script para la limpieza de datos del bachómetro.
 │ ├── config.py <- Configuración general (rutas, claves)
-│ ├── clean.py <- Transformaciones y limpieza de datos
-│ ├── features.py <- Creación de columnas derivadas
-│ ├── dataset.py <- Lectura y unión de datasets
-│ ├── plots.py <- Funciones para visualizaciones y mapas
-│ └── utils.py <- Funciones auxiliares (fechas, coords, etc.)
+│ ├── download_atus.py <- Funciones para descargar datos de choques (ATUS).
+│ ├── download_clima.py <- Funciones para descargar datos del clima.
+│ ├── download_colonias.py <- Funciones para descargar datos de colonias.
+│ ├── extract_bachometro.py <- Extracción y procesamiento del bachómetro.
+│ ├── extract_colonias.py <- Extracción y procesamiento de datos de colonias.
+│ ├── extract_vialidades.py <- Extracción y procesamiento de datos de vialidades.
+│ └── utils.py <- Funciones auxiliares
 │
 └── baches_vs_accidentes_eda <- Código fuente del proyecto
 ├── python-version <- Versión de python utilizada en el proyecto
