@@ -1,19 +1,30 @@
 import pandas as pd
-
+import pathlib
 
 def procesar_columna_fecha(df, col, month_map):
+    """
+    Procesa una columna de fecha en formato español a datetime de pandas.
+    
+    Convierte fechas en formato texto con meses en español (ej: '15 Enero 2023')
+    a objetos datetime de pandas.
+    
+    Args:
+        df (pd.DataFrame): DataFrame con la columna a procesar
+        col (str): Nombre de la columna de fecha a procesar
+        month_map (dict): Diccionario de mapeo de meses español → número
+    
+    Returns:
+        pd.DataFrame: DataFrame con la columna de fecha convertida a datetime
+    """
     # Máscara para filas válidas (no nulas)
     mask = df[col].notna()
-    #print(f"[DEBUG] Filas válidas para '{col}': {mask.sum()} de {len(df)}")
 
     # Si no hay filas válidas, omite el procesamiento
     if mask.sum() == 0:
-        #print(f"[DEBUG] No hay filas válidas para '{col}'. Se omite el procesamiento.")
         return df
 
     # Convertir a string
     df.loc[mask, col] = df.loc[mask, col].astype(str)
-    #print(f"[DEBUG] Tipos tras astype(str): {df.loc[mask, col].apply(type).unique()}")
 
     # Limpiar caracteres no alfanuméricos
     df.loc[mask, col] = df.loc[mask, col].str.replace(r'[^a-zA-Z0-9 ]', '', regex=True)
@@ -25,19 +36,13 @@ def procesar_columna_fecha(df, col, month_map):
     # Cambiar None por NA
     df[col] = df[col].replace({None: pd.NA})
 
-    # DEBUG: Ver ejemplos antes del split
-    #print(f"[DEBUG] Ejemplo de valores antes del split en '{col}':")
-    #print(df.loc[mask, col].head(10).to_list())
-
     # Split en 3 columnas
     splitted = df[col].str.split(' ', expand=True)
-    #print(f"[DEBUG] Shape del split: {splitted.shape}")
-    #print(f"[DEBUG] Primeras filas del split:\n{splitted.head(10)}")
 
     # Verifica si el split tiene exactamente 3 columnas
     if splitted.shape[1] != 3:
-        #print(f"[ERROR] El split produjo {splitted.shape[1]} columnas en vez de 3. Revisa el formato de las fechas en '{col}'.")
-        return df  # O puedes lanzar un error si prefieres: raise ValueError(...)
+        #print(f"El split de '{col}' produjo {splitted.shape[1]} columnas en vez de 3")
+        return df
 
     df[['month', 'day', 'year']] = splitted
 
@@ -54,22 +59,100 @@ def procesar_columna_fecha(df, col, month_map):
     return df
 
 
-# Cargar el archivo JSON
-df = pd.read_json("../../data/raw/baches_2022.json")
+def procesar_dataset(json_file_path, output_dir):
+    """
+    Procesa un archivo JSON de baches y lo guarda como CSV limpio.
+    
+    Args:
+        json_file_path (str): Ruta al archivo JSON de entrada
+        output_dir (str): Directorio donde guardar el CSV resultante
+    
+    Returns:
+        pd.DataFrame: DataFrame procesado
+    """
+    try:
+        # Cargar el archivo JSON
+        df = pd.read_json(json_file_path)
+        
+        # Eliminar columnas no necesarias
+        columnas_a_eliminar = [
+            'descripcion', 'description', 'material', 
+            'imagenes', 'date', 'neighborhoods', 'no_reparemos'
+        ]
+        
+        # Eliminar solo las columnas que existen en el DataFrame
+        columnas_existentes = [col for col in columnas_a_eliminar if col in df.columns]
+        df = df.drop(columns=columnas_existentes)
+        
+        # Mapeo de meses en español a números
+        month_map = { 
+            'Enero': 1, 'Febrero': 2, 'Marzo': 3, 'Abril': 4, 'Mayo': 5, 'Junio': 6,
+            'Julio': 7, 'Agosto': 8, 'Septiembre': 9, 'Octubre': 10, 'Noviembre': 11, 'Diciembre': 12 
+        }
 
-df = df.drop(columns=['descripcion'])
-df = df.drop(columns=['description'])
-df = df.drop(columns=['material'])
-df = df.drop(columns=['imagenes'])
-df = df.drop(columns=['date'])
-df = df.drop(columns=['neighborhoods'])
-df = df.drop(columns=['no_reparemos'])  
+        # Procesar columnas de fecha si existen
+        if 'fecha_reporte' in df.columns:
+            df = procesar_columna_fecha(df, 'fecha_reporte', month_map)
+        
+        if 'fecha_atencion' in df.columns:
+            df = procesar_columna_fecha(df, 'fecha_atencion', month_map)
 
-#Mappeando meses del año a numeros
-month_map = { 'Enero': 1, 'Febrero': 2, 'Marzo': 3, 'Abril': 4, 'Mayo': 5, 'Junio': 6,
-              'Julio': 7, 'Agosto': 8, 'Septiembre': 9, 'Octubre': 10, 'Noviembre': 11, 'Diciembre': 12 }
+        # Crear carpeta processed si no existe
+        pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Generar nombre de archivo de salida
+        archivo_entrada = pathlib.Path(json_file_path).stem  # ej: 'baches_2022'
+        archivo_salida = f"{archivo_entrada}_limpio.csv"
+        ruta_salida = pathlib.Path(output_dir) / archivo_salida
+        
+        # Exportar el DataFrame limpio a CSV
+        df.to_csv(ruta_salida, index=False)
+        print(f"Archivo CSV limpio creado: '{ruta_salida}'")
+        
+        return df
+        
+    except Exception as e:
+        print(f"Error procesando {json_file_path}: {e}")
+        return None
 
-# Procesando las columnas de fecha
-df = procesar_columna_fecha(df, 'fecha_reporte', month_map)
-df = procesar_columna_fecha(df, 'fecha_atencion', month_map)
 
+def main():
+    """
+    Función principal que procesa múltiples datasets de baches.
+    """
+    # Obtener el directorio actual del script
+    script_dir = pathlib.Path(__file__).parent
+    project_root = script_dir.parent  # Subir un nivel para llegar a la raíz del proyecto
+    
+    # Configuración de rutas RELATIVAS desde el script
+    RAW_DIR = project_root / "data" / "raw"
+    PROCESSED_DIR = project_root / "data" / "processed"
+    
+    print(f"Buscando datos en: {RAW_DIR.absolute()}")
+    
+    # Lista de datasets a procesar - usar los archivos que realmente existen
+    datasets = [
+        RAW_DIR / "baches_2021.json",
+        RAW_DIR / "baches_2022.json",
+        RAW_DIR / "baches_2023.json"
+        # No incluir 2024 y 2025 si no existen
+    ]
+    
+    print(f"Iniciando procesamiento de datasets...")
+    print("=" * 60)
+    
+    # Procesar solo los archivos que existen
+    archivos_procesados = 0
+    for dataset_path in datasets:
+        if dataset_path.exists():
+            print(f"Procesando: {dataset_path.name}")
+            procesar_dataset(dataset_path, PROCESSED_DIR)
+            archivos_procesados += 1
+        else:
+            print(f"Archivo no encontrado: {dataset_path.name} - Saltando...")
+    
+    print(f"Procesamiento completado. Archivos procesados: {archivos_procesados}")
+
+
+if __name__ == '__main__':
+    main()
