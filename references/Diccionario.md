@@ -58,8 +58,8 @@ Los datos representan reportes ciudadanos verificados por el municipio y contien
 
 | Nombre Final | Nombre de Origen | Tipo de Dato | Descripción |
 | :--- | :--- | :--- | :--- |
-| **latitude** | `lat` | float | Latitud geográfica del bache en sistema WGS84. |
-| **longitude** | `lng` | float | Longitud geográfica del bache en sistema WGS84. |
+| **latitude** | `latitude` | float | Latitud geográfica del bache en sistema WGS84. |
+| **longitude** | `longitude` | float | Longitud geográfica del bache en sistema WGS84. |
 | **id** | `id` | int | Identificador único del reporte de bache en el sistema municipal. |
 | **folio** | `folio` | float | Folio único del reporte municipal (puede contener decimales por formato de exportación). |
 | **fecha_reporte** | `fecha_reporte` | date | Fecha en que se reportó el bache (formato YYYY-MM-DD). |
