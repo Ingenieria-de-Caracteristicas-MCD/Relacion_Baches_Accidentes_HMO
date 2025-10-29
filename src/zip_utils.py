@@ -1,7 +1,7 @@
 """
 utils.py
 
-Funciones utilitarias para la descarga y validación de archivos ZIP
+Funciones utilitarias para la extracción, descarga y validación de archivos ZIP.
 """
 
 from config import ROOT_DIR, get_logger
@@ -17,26 +17,27 @@ from tqdm import tqdm
 logger = get_logger(Path(__file__).name)
 
 
-def is_valid_zip(zip_path: Path):
+def is_valid_zip(zip_path):
     """
     Verifica si un archivo ZIP es válido y no está corrupto.
     """
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
             bad_file = zf.testzip()
+            
             if bad_file:
                 logger.error(f"ZIP corrupto: {zip_path.relative_to(ROOT_DIR)}")
                 return False
+            
             return True
     except zipfile.BadZipFile:
         logger.exception(f"ZIP corrupto: {zip_path.relative_to(ROOT_DIR)}")
         return False
 
 
-def download_zip(url: str, output_dir: Path, chunk_size: int = 1024 * 1024):
+def download_zip(url, output_dir, chunk_size=5*1024*1024):
     """
     Descarga un archivo ZIP desde una URL y lo guarda en el directorio especificado.
-    Muestra una barra de progreso durante la descarga.
     """
     filename = Path(url).name
     zip_path = output_dir / filename
@@ -71,7 +72,7 @@ def download_zip(url: str, output_dir: Path, chunk_size: int = 1024 * 1024):
         return None
 
 
-def extract_zip_file(zip_path: Path, output_path: Path = None):
+def extract_zip_file(zip_path, output_path):
     """
     Extrae un archivo ZIP al directorio especificado.
     """
@@ -82,27 +83,25 @@ def extract_zip_file(zip_path: Path, output_path: Path = None):
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(path=output_path)
         return output_path, True
+    
     except zipfile.BadZipFile:
         logger.exception(f"ZIP corrupto: {zip_path.relative_to(ROOT_DIR)}")
         return output_path, False
 
 
-def extract_all_zips(zip_paths, output_base_dir: Path = None):
+def extract_all_zips(zip_paths, output_base_dir):
     """
     Extrae múltiples archivos ZIP.
     """
-    extracted = []
+    extracted_dirs = []
     for zip_path in zip_paths:
         out_dir = (output_base_dir or zip_path.parent) / zip_path.stem
         output_path, valid = extract_zip_file(zip_path, out_dir)
         if valid:
-            extracted.append(output_path)
+            extracted_dirs.append(output_path)
             logger.info(f"ZIP {zip_path.name} extraído -> {output_path.relative_to(ROOT_DIR)}")
-    return extracted
+    return extracted_dirs
 
 
-def get_zip_paths(dirpath: Path):
-    """
-    Retorna todas las rutas ZIP dentro de un directorio.
-    """
-    return [p for p in dirpath.iterdir() if p.suffix.lower() == ".zip"]
+def get_zip_paths(dirpath):
+    return list(dirpath.glob("*.zip"))
