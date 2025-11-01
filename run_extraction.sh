@@ -9,3 +9,4 @@ python src/extract_colonias.py
 python src/extract_vialidades.py
 python src/extract_bachometro.py
 python src/cleaning_data_bachometro.py
+python src/clean_clima.py
