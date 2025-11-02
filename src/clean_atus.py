@@ -1,7 +1,7 @@
 """
 clean_atus.py
 
-Combina y limpa los archivos de accidentes de tránsito (ATUS) para
+Filtra, Combina y limpa los archivos de accidentes de tránsito (ATUS) para
 Hermosillo, Sonora. 
 
 El diccionario de datos de referencia: raw/atus/diccionario_de_datos.xlxs
@@ -10,12 +10,18 @@ Guarda los resultados limpios en data/processed
 """
 
 from config import ROOT_DIR, INTERIM_DIR, PROCESSED_DIR, get_logger
-from extract_atus import INTERIM_ATUS_DIR
+from extract_atus import ATUS_DIR
 
+import re
 from pathlib import Path
 from datetime import datetime
 
 import pandas as pd
+
+
+# Paths
+INTERIM_ATUS_DIR = INTERIM_DIR / "atus"
+INTERIM_ATUS_DIR.mkdir(exist_ok=True)
 
 
 # Logger
@@ -23,10 +29,33 @@ logger = get_logger(Path(__file__).name)
 
 
 def get_all_csvs(base_path):
-    """
-    Retorna una lista con todas las rutas .csv dentro de un directorio base.
-    """
-    return [item for item in base_path.rglob("*.csv") if item.is_file()]
+    return list(base_path.rglob("*.csv"))
+
+
+def filter_hermosillo_records(csv_path):
+    df = pd.read_csv(csv_path, encoding='latin1')
+    df_hmo = df[
+        (df['EDO'] == 26) & (df['MPIO'] == 30)
+    ]
+    filename = csv_path.stem
+
+    # Encontrar el año en el nombre del archivo
+    match = re.search(r'(\d{4})', filename) 
+    year = match.group(1)
+    
+    outpath = INTERIM_ATUS_DIR / f"ATUS_HMO_{year}.csv"
+    df_hmo.to_csv(outpath)
+    return outpath
+
+
+def filter_all_csvs(csv_paths):
+    paths_atus_hmo = []
+    for csv_path in csv_paths: 
+        outpath = filter_hermosillo_records(csv_path)
+        logger.info(f'Archivo {csv_path.relative_to(ROOT_DIR)} filtrado -> {outpath.relative_to(ROOT_DIR)}')
+        paths_atus_hmo.append(outpath)            
+
+    return paths_atus_hmo
 
 
 def decode_dia_semana(valor):
@@ -162,54 +191,46 @@ def create_datetime(df):
     )
     return df
 
-def process_cleaning_atus(csv_paths=[], clean=False):    
+def process_cleaning_atus(csv_paths=[]):    
     start = datetime.now()
-    logger.info(f'Inicia el proceso de limpieza de archivos ATUS')
+    logger.info(f'Inicia el proceso de limpieza ATUS: ')
 
-    # Carga y concatenación de archivos
     if not csv_paths: 
-        logger.info(f'No se proporcionaron rutas de archivos. Se cargarán todos los archivos CSV en {INTERIM_ATUS_DIR.relative_to(ROOT_DIR)}.')
-        csv_paths = get_all_csvs(INTERIM_ATUS_DIR)
+        logger.info(f'No se proporcionaron rutas de archivos. Se cargarán todos los archivos CSV en {ATUS_DIR.relative_to(ROOT_DIR)}.')
+        csv_paths = get_all_csvs(ATUS_DIR)
     
-    # print(csv_paths)    
-    # for p in csv_paths: print(p)
-    # return
-
-    dfs = [pd.read_csv(p, index_col=0) for p in csv_paths]
+    # Filtrado
+    paths_atus_hmo = filter_all_csvs(csv_paths)
+    
+    # Carga y concatenación de archivos
+    dfs = [pd.read_csv(p, index_col=0) for p in paths_atus_hmo]
     df = pd.concat(dfs, ignore_index=True)
-    # print(df.head())  # OK
 
     # Normalización de nombres de columnas
     df.columns = df.columns.str.lower()
-    # print(df.head())  # OK
     
     # Eliminamos columnas redundantes
     df.drop(columns=["edo", "mpio"], inplace=True)
 
     # Combinamos fecha y hora en un solo campo datetime
     df = create_datetime(df)
-    # print(df.head())  # OK
 
     # Normalizacion de str types
     df[df.select_dtypes(include='object').columns] = df.select_dtypes(include='object').apply(lambda x: x.str.lower())
 
     # Decodificaciones
     df = decode_all(df)
-    # print(df.head())  # OK
-    # print(df.dtypes)  # OK
 
-    # Guardamos archivo en data/processed/atus_2021-2023-clean.csv
-    clean_atus_path = PROCESSED_DIR / "atus_2021-2023_clean.csv"
-    logger.info(f'Archivo limpio -> {clean_atus_path.relative_to(ROOT_DIR)}')
+    # Guardamos archivo en data/processed/atus_clean.csv
+    clean_atus_path = PROCESSED_DIR / "atus_clean.csv"
+    logger.info(f'Archivo limpio guardado en: {clean_atus_path.relative_to(ROOT_DIR)}')
     df.to_csv(clean_atus_path)
 
     end = datetime.now()
     elapsed = (end - start).total_seconds()
-    logger.info(f'Proceso de limpieza ATUS completado en {elapsed:.2f} segundos.\n')
+    logger.info(f'Proceso de limpieza ATUS completado en {elapsed:.2f} s')
 
     return clean_atus_path
-
-
 
 
 if __name__ == '__main__': 
