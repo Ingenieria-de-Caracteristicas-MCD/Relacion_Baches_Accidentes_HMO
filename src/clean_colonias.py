@@ -70,6 +70,15 @@ def filter_hermosillo_colonias(gdf):
     return gdf_hmo_urb
 
 
+def columns_to_lower(gdf):
+    obj_cols = gdf.select_dtypes(include='object')
+    
+    for col in obj_cols.columns:
+        gdf[col] = gdf[col].str.lower()
+    
+    return gdf
+
+
 def process_cleaning_colonias():    
     start = datetime.now()
     logger.info('Inicia el proceso de limpieza COLONIAS-INEGI:')
@@ -87,6 +96,9 @@ def process_cleaning_colonias():
 
     # Renombrar columnas lower
     gdf_hmo.columns = gdf_hmo.columns.str.lower()
+
+    # Normalizar columnas tipo str
+    gdf_hmo = columns_to_lower(gdf_hmo)
 
     # Eliminar columnas {'cve_ent', 'cve_mun', 'cve_loc', 'fecha_act', 'institucio'}
     gdf_hmo.drop(columns=['cve_ent', 'cve_mun', 'cve_loc', 'fecha_act', 'institucio'], inplace=True)
