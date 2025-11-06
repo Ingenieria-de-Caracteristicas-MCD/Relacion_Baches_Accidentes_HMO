@@ -111,6 +111,38 @@ def columns_to_lower(gdf):
     return gdf
 
 
+def dissolve_roads(gdf):
+    # Definimos funciones de agregación
+    agg_funcs = {
+        "longitud": "sum",
+        "vel_max": "first",
+        "num_carriles": "first",
+        "tipo_vialidad": "first",
+        "un_sentido": "first"
+    }
+
+    # Aplicamos dissolve
+    gdf_dissolved = gdf.dissolve(
+        by="nombre_vialidad",
+        aggfunc=agg_funcs,
+        as_index=False
+    )
+
+    # Reordenamos columnas
+    cols = [
+        "tipo_vialidad",
+        "nombre_vialidad",
+        "un_sentido",
+        "longitud",
+        "vel_max",
+        "num_carriles",
+        "geometry"
+    ]
+    gdf_dissolved = gdf_dissolved[cols]
+
+    return gdf_dissolved
+
+
 def process_cleaning_vialidades(): 
 
     start = datetime.now()
@@ -134,15 +166,22 @@ def process_cleaning_vialidades():
     # Normalizar columnas tipo str
     gdf = columns_to_lower(gdf)
 
+    # Reemplazar vialidades con nomnres nulos
+    gdf["nombre_vialidad"] = gdf["nombre_vialidad"].fillna("SIN_NOMBRE")
+
+    # Disolver los tramos con el mismo nombre de vialidad
+    gdf_dissolved = dissolve_roads(gdf)
+
     # Guardar datos 
     gpkg_path, geojson_path = save_geo_data(gdf, PROCESSED_VIALIDADES_DIR, 'vialidades_hmo')
+    _, geojson_dissolved_path = save_geo_data(gdf_dissolved, PROCESSED_VIALIDADES_DIR, 'vialidades_hmo_disolved')
     logger.info(f'Archivos limpios guardados en: {PROCESSED_VIALIDADES_DIR.relative_to(ROOT_DIR)}')
     
     end = datetime.now()
     elapsed = (end - start).total_seconds()
     logger.info(f'Proceso de limpieza VIALIDADES-OSM finalizado en {elapsed:.2f} s')
     
-    return gpkg_path, geojson_path
+    return gpkg_path, geojson_path, geojson_dissolved_path
 
 
 if __name__ == '__main__': 
