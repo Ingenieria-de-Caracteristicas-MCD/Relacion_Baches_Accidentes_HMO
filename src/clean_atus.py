@@ -1,28 +1,29 @@
 """
 clean_atus.py
 
-Filtra, Combina y limpa los archivos de accidentes de tránsito (ATUS) para
-Hermosillo, Sonora. 
+Filtra, combina y limpia los archivos de accidentes de tránsito (ATUS)
+para Hermosillo, Sonora.
 
-El diccionario de datos de referencia: raw/atus/diccionario_de_datos.xlxs
+El diccionario de datos de referencia: raw/atus/diccionario_de_datos.xlsx
 
-Guarda los resultados limpios en data/processed
+Guarda los resultados limpios en data/processed/atus/
 """
 
 from config import ROOT_DIR, INTERIM_DIR, PROCESSED_DIR, get_logger
 from extract_atus import ATUS_DIR
-
 import re
 from pathlib import Path
 from datetime import datetime
-
 import pandas as pd
-
+import geopandas as gpd
+from shapely.geometry import box, Point
 
 # Paths
 INTERIM_ATUS_DIR = INTERIM_DIR / "atus"
 INTERIM_ATUS_DIR.mkdir(exist_ok=True)
 
+PROCESSED_ATUS_DIR = PROCESSED_DIR / "atus"
+PROCESSED_ATUS_DIR.mkdir(exist_ok=True)
 
 # Logger
 logger = get_logger(Path(__file__).name)
@@ -34,27 +35,21 @@ def get_all_csvs(base_path):
 
 def filter_hermosillo_records(csv_path):
     df = pd.read_csv(csv_path, encoding='latin1')
-    df_hmo = df[
-        (df['EDO'] == 26) & (df['MPIO'] == 30)
-    ]
-    filename = csv_path.stem
+    df_hmo = df[(df['EDO'] == 26) & (df['MPIO'] == 30)]
+    match = re.search(r'(\d{4})', csv_path.stem)
+    year = match.group(1) if match else "xxxx"
 
-    # Encontrar el año en el nombre del archivo
-    match = re.search(r'(\d{4})', filename) 
-    year = match.group(1)
-    
     outpath = INTERIM_ATUS_DIR / f"ATUS_HMO_{year}.csv"
-    df_hmo.to_csv(outpath)
+    df_hmo.to_csv(outpath, index=False)
     return outpath
 
 
 def filter_all_csvs(csv_paths):
     paths_atus_hmo = []
-    for csv_path in csv_paths: 
+    for csv_path in csv_paths:
         outpath = filter_hermosillo_records(csv_path)
         logger.info(f'Archivo {csv_path.relative_to(ROOT_DIR)} filtrado -> {outpath.relative_to(ROOT_DIR)}')
-        paths_atus_hmo.append(outpath)            
-
+        paths_atus_hmo.append(outpath)
     return paths_atus_hmo
 
 
@@ -160,77 +155,96 @@ def decode_clase_accidente(valor):
     clases = {1: "fatal", 2: "no fatal", 3: "solo daños"}
     return clases.get(valor)
 
-def decode_all(df):
+
+def decode_all(gdf):
     """
     Decodifica las columnas categóricas del DataFrame de acuerdo con los valores
     definidos en el diccionario de datos.
     """
-    df = df.copy()
+    gdf = gdf.copy()
 
-    df['diasemana'] = df['diasemana'].apply(decode_dia_semana)
-    df['urbana'] = df['urbana'].apply(decode_zona_urbana)
-    df['suburbana'] = df['suburbana'].apply(decode_zona_suburbana)
-    df['tipaccid'] = df['tipaccid'].apply(decode_tipo_accidente)
-    df['causaacci'] = df['causaacci'].apply(decode_causa_accidente)
-    df['caparod'] = df['caparod'].apply(decode_capa_rodamiento)
-    df['sexo'] = df['sexo'].apply(decode_sexo)
-    df['aliento'] = df['aliento'].apply(decode_aliento)
-    df['cinturon'] = df['cinturon'].apply(decode_cinturon)
-    df['clase'] = df['clase'].apply(decode_clase_accidente)
+    gdf['diasemana'] = gdf['diasemana'].apply(decode_dia_semana)
+    gdf['urbana'] = gdf['urbana'].apply(decode_zona_urbana)
+    gdf['suburbana'] = gdf['suburbana'].apply(decode_zona_suburbana)
+    gdf['tipaccid'] = gdf['tipaccid'].apply(decode_tipo_accidente)
+    gdf['causaacci'] = gdf['causaacci'].apply(decode_causa_accidente)
+    gdf['caparod'] = gdf['caparod'].apply(decode_capa_rodamiento)
+    gdf['sexo'] = gdf['sexo'].apply(decode_sexo)
+    gdf['aliento'] = gdf['aliento'].apply(decode_aliento)
+    gdf['cinturon'] = gdf['cinturon'].apply(decode_cinturon)
+    gdf['clase'] = gdf['clase'].apply(decode_clase_accidente)
 
-    return df
+    return gdf
 
-def create_datetime(df):
-    df["datetime"] = pd.to_datetime(
-        df["anio"].astype(str) + "-" +
-        df["mes"].astype(str).str.zfill(2) + "-" +
-        df["dia"].astype(str).str.zfill(2) + " " +
-        df["hora"].astype(str).str.zfill(2) + ":" +
-        df["minutos"].astype(str).str.zfill(2),
+
+def create_datetime(gdf):
+    gdf["datetime"] = pd.to_datetime(
+        gdf["anio"].astype(str) + "-" +
+        gdf["mes"].astype(str).str.zfill(2) + "-" +
+        gdf["dia"].astype(str).str.zfill(2) + " " +
+        gdf["hora"].astype(str).str.zfill(2) + ":" +
+        gdf["minutos"].astype(str).str.zfill(2),
         errors="coerce"
     )
-    return df
+    return gdf
 
-def process_cleaning_atus(csv_paths=[]):    
+
+def filter_urban_data(gdf):
+    x_min, x_max = -111.075, -110.900
+    y_min, y_max = 28.900, 29.200
+    bbox = box(x_min, y_min, x_max, y_max)
+
+    filtered = gdf[gdf.intersects(bbox)]
+    filtered.to_file(INTERIM_ATUS_DIR / "atus_hmo_urb.geojson", driver="GeoJSON")
+    logger.info(f'Archivo filtrado guardado en: {INTERIM_ATUS_DIR.relative_to(ROOT_DIR)}')
+    return filtered
+
+
+def process_cleaning_atus(csv_paths=None):
     start = datetime.now()
-    logger.info(f'Inicia el proceso de limpieza ATUS: ')
+    logger.info('Inicia el proceso de limpieza ATUS')
 
-    if not csv_paths: 
-        logger.info(f'No se proporcionaron rutas de archivos. Se cargarán todos los archivos CSV en {ATUS_DIR.relative_to(ROOT_DIR)}.')
+    if not csv_paths:
         csv_paths = get_all_csvs(ATUS_DIR)
-    
-    # Filtrado
+        logger.info(f'Se cargarán todos los archivos CSV en {ATUS_DIR.relative_to(ROOT_DIR)}')
+
     paths_atus_hmo = filter_all_csvs(csv_paths)
-    
-    # Carga y concatenación de archivos
-    dfs = [pd.read_csv(p, index_col=0) for p in paths_atus_hmo]
-    df = pd.concat(dfs, ignore_index=True)
 
-    # Normalización de nombres de columnas
-    df.columns = df.columns.str.lower()
-    
-    # Eliminamos columnas redundantes
-    df.drop(columns=["edo", "mpio"], inplace=True)
+    # Carga y concatenación
+    dfs = [pd.read_csv(p) for p in paths_atus_hmo]
+    gdf = pd.concat(dfs, ignore_index=True)
 
-    # Combinamos fecha y hora en un solo campo datetime
-    df = create_datetime(df)
+    gdf.columns = gdf.columns.str.lower()
+    gdf.drop(columns=["edo", "mpio"], inplace=True, errors="ignore")
 
-    # Normalizacion de str types
-    df[df.select_dtypes(include='object').columns] = df.select_dtypes(include='object').apply(lambda x: x.str.lower())
+    # Crear geometría
+    lon_col = [c for c in gdf.columns if 'lon' in c][0]
+    lat_col = [c for c in gdf.columns if 'lat' in c][0]
+    gdf = gpd.GeoDataFrame(
+        gdf,
+        geometry=gpd.points_from_xy(gdf[lon_col], gdf[lat_col]),
+        crs="EPSG:4326"
+    )
 
-    # Decodificaciones
-    df = decode_all(df)
+    # Filtrado espacial
+    gdf = filter_urban_data(gdf)
 
-    # Guardamos archivo en data/processed/atus_clean.csv
-    clean_atus_path = PROCESSED_DIR / "atus_clean.csv"
-    logger.info(f'Archivo limpio guardado en: {clean_atus_path.relative_to(ROOT_DIR)}')
-    df.to_csv(clean_atus_path)
+    # Campos derivados
+    gdf = create_datetime(gdf)
+    gdf = decode_all(gdf)
 
-    end = datetime.now()
-    elapsed = (end - start).total_seconds()
+    # Guardado
+    clean_csv_path = PROCESSED_ATUS_DIR / "atus_clean.csv"
+    clean_geojson_path = PROCESSED_ATUS_DIR / "atus_clean.geojson"
+
+    gdf.to_csv(clean_csv_path, index=False)
+    gdf.to_file(clean_geojson_path, driver="GeoJSON")
+
+    elapsed = (datetime.now() - start).total_seconds()
     logger.info(f'Proceso de limpieza ATUS completado en {elapsed:.2f} s')
+    logger.info(f'Archivos guardados en {PROCESSED_ATUS_DIR.relative_to(ROOT_DIR)}')
 
-    return clean_atus_path
+    return clean_csv_path
 
 
 if __name__ == '__main__': 
