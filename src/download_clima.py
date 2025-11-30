@@ -5,151 +5,134 @@ Descarga los archivos del clima de Hermosillo desde el API de Open-Meteo.
 
 Uso:
     python download_clima.py
-
-Descarga los archivos correspondientes a los años 2021–2023 en un solo archivo
-.CSV y los guarda en data/raw/clima. El archivo .txt se guarda directamente en la carpeta data/.
 """
 
-import openmeteo_requests
 import pandas as pd
 import requests_cache
 from retry_requests import retry
 from datetime import datetime
 from pathlib import Path
 
-# ******************************************************************
-# Importar Rutas y Logger desde el archivo de configuración (config.py)
-# NOTA: Solo importamos variables que sabemos que existen en el config.py de tu compañero.
-from config import RAW_DIR, DATA_DIR, get_logger, init_paths 
-# ******************************************************************
+from config import ROOT_DIR, RAW_DIR, get_logger
 
-# Inicializar el logger para este script
-logger = get_logger(__name__)
+logger = get_logger(Path(__file__).name)
 
-# --- 1. CONFIGURACIÓN DEL PROYECTO Y LA API ---
-
-# Definición de parámetros para la documentación y la API
+# Parámetros
 START_DATE = "2021-01-01"
 END_DATE = "2023-12-31"
+
 LATITUDE = 29.1026
 LONGITUDE = -110.9773
 CITY_NAME = "Hermosillo"
 DATA_SOURCE_1 = "Open-Meteo Archive API (Clima)"
 DATA_URL_1 = "https://open-meteo.com/en/docs/archive-api"
 
-# Rutas de guardado usando las variables importadas
-RAW_DATA_PATH = RAW_DIR / "clima_hermosillo.csv"
+# Rutas
+CACHE_DIR = RAW_DIR / "cache_clima"
+CLIMA_DIR = RAW_DIR / "clima"
 
-# ***************************************************************
-# Se usa DATA_DIR (que apunta a 'data/raw') para el archivo .txt
+CACHE_DIR.mkdir(parents=True, exist_ok=True)   # Crear cache_clima/
+CLIMA_DIR.mkdir(parents=True, exist_ok=True)   # Crear clima/
+
+# Archivos de salida
+RAW_DATA_PATH = CLIMA_DIR / "clima_hermosillo.csv"
 RAW_METADATA_PATH = RAW_DIR / "info_descargas_clima.txt"
-# ***************************************************************
 
+# Cliente HTTP con cache + retry
+cache = requests_cache.CachedSession(CACHE_DIR / "http_cache.sqlite", expire_after=-1)
+session = retry(cache, retries=5, backoff_factor=0.2)
 
-# Setup del cliente de Open-Meteo con cache y retry
-cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
-retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
-openmeteo = openmeteo_requests.Client(session=retry_session)
+API_URL = "https://archive-api.open-meteo.com/v1/archive"
 
-url = "https://archive-api.open-meteo.com/v1/archive"
-params = {
+PARAMS = {
     "latitude": LATITUDE,
     "longitude": LONGITUDE,
     "start_date": START_DATE,
     "end_date": END_DATE,
-    "hourly": ["temperature_2m", "precipitation", "weather_code", "is_day", "relative_humidity_2m", "cloud_cover", "wind_speed_10m"],
+    "hourly": [
+        "temperature_2m",
+        "precipitation",
+        "weather_code",
+        "is_day",
+        "relative_humidity_2m",
+        "cloud_cover",
+        "wind_speed_10m"
+    ],
+    "timezone": "UTC"
 }
 
-# --- 2. DESCARGA Y PROCESAMIENTO ---
 
+# Descarga y procesamiento
 def download_and_process_data():
-    """Descarga los datos de Open-Meteo y los convierte en DataFrame."""
-    logger.info(f"Conectando a {DATA_SOURCE_1}...")
+    """Descarga los datos del API y los convierte a DataFrame."""
+    logger.info(f"Conectando a {DATA_SOURCE_1}…")
+
     try:
-        responses = openmeteo.weather_api(url, params=params)
-        response = responses[0]
-        
-        # Proceso de datos por hora
-        hourly = response.Hourly()
-        hourly_data = {
-            "date": pd.date_range(
-                start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
-                end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
-                freq = pd.Timedelta(seconds = hourly.Interval()),
-                inclusive = "left"
-            )
-        }
-        
-        # Asignación de variables al DataFrame
-        variable_names = ["temperature_2m", "precipitation", "weather_code", "is_day", "relative_humidity_2m", "cloud_cover", "wind_speed_10m"]
-        
-        for i, name in enumerate(variable_names):
-            hourly_data[name] = hourly.Variables(i).ValuesAsNumpy()
-            
-        logger.info(f"Descargados {len(hourly_data['date'])} registros de clima.")
-        return pd.DataFrame(data=hourly_data)
+        resp = session.get(API_URL, params=PARAMS)
+        resp.raise_for_status()
+        data = resp.json()
+
+        if "hourly" not in data:
+            raise ValueError("La respuesta no contiene datos horarios ('hourly').")
+
+        hourly = data["hourly"]
+
+        df = pd.DataFrame(hourly)
+        df["time"] = pd.to_datetime(df["time"], utc=True)
+        df.rename(columns={"time": "date"}, inplace=True)
+
+        logger.info(f"Descargados {len(df)} registros de clima.")
+        return df
 
     except Exception as e:
-        logger.error(f"Error al descargar o procesar los datos de Open-Meteo: {e}")
+        logger.error(f"Error al descargar o procesar los datos: {e}")
         return None
 
-# --- 3. FUNCIONES DE GUARDADO Y DOCUMENTACIÓN ---
+
+# Guardado y documentación
 
 def save_csv(df, path: Path):
-    """Guarda el DataFrame en la ruta especificada."""
     df.to_csv(path, index=False)
-    logger.info(f"Datos guardados exitosamente en: {path}")
+    logger.info(f"Datos guardados exitosamente en: {path.relative_to(ROOT_DIR)}")
+
 
 def generate_documentation():
-    """Genera el archivo de texto con la descripción de la fuente."""
-    
-    doc_content = f"""
+    contenido = f"""
 # ===============================================
 # DESCRIPCIÓN DE FUENTES DE DATOS - CLIMA HMO
 # ===============================================
-    
+
 ## Fuente 1: Datos Meteorológicos Históricos
 - **Nombre de la Fuente:** {DATA_SOURCE_1}
 - **Enlace:** {DATA_URL_1}
 - **Fecha de Descarga:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 - **Ubicación:** {CITY_NAME} (Lat: {LATITUDE}, Lon: {LONGITUDE})
 - **Rango de Fechas de los Datos:** {START_DATE} a {END_DATE}
-- **Descripción de los Datos (Naturaleza):**
-    Datos de reanálisis histórico del clima, a nivel horario. Proporcionan mediciones detalladas a nivel superficial.
-    
+
 - **Variables Descargadas:**
-    - **temperature_2m:** Temperatura del aire a 2 metros (°C).
-    - **precipitation:** Precipitación total (mm).
-    - **weather_code (WMO):** Código que describe las condiciones del clima.
-    - **is_day:** Indicador de día o noche.
-    - **relative_humidity_2m:** Humedad relativa a 2 metros (%).
-    - **cloud_cover:** Porcentaje de cobertura de nubes (%).
-    - **wind_speed_10m:** Velocidad del viento a 10 metros (km/h).
-    - **Frecuencia Temporal:** Horaria
-    - **Formato de los Datos:** CSV
+    - temperature_2m
+    - precipitation
+    - weather_code
+    - is_day
+    - relative_humidity_2m
+    - cloud_cover
+    - wind_speed_10m
+
+- **Frecuencia Temporal:** Horaria
+- **Formato de los Datos:** CSV
 """
 
-    with open(RAW_METADATA_PATH , "w") as f:
-        f.write(doc_content)
-    logger.info(f"Documentación de fuentes generada en: {RAW_METADATA_PATH }")
+    RAW_METADATA_PATH.write_text(contenido, encoding="utf-8")
+    logger.info(f"Documentación generada en: {RAW_METADATA_PATH.relative_to(ROOT_DIR)}")
 
-
-# --- 4. EJECUCIÓN PRINCIPAL ---
 
 if __name__ == "__main__":
-    
-    # 1. Asegurar la estructura de carpetas (solo las definidas en el config original)
-    init_paths() 
-    logger.info("Estructura de carpetas de datos verificada y lista.")
+    logger.info("Estructura de carpetas verificada.")
 
-    # 2. Descarga y procesamiento
-    df_clima = download_and_process_data()
-    
-    if df_clima is not None:
-        # 3. Guardar el CSV en data/raw/
-        save_csv(df_clima, RAW_DATA_PATH)
-        
-        # 4. Generar el archivo de documentación
+    df = download_and_process_data()
+
+    if df is not None:
+        save_csv(df, RAW_DATA_PATH)
         generate_documentation()
-    
-    logger.info("Proceso de descarga de Fuente clima completado.")
+
+    logger.info("Proceso de descarga de clima completado.")
