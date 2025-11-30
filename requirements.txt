@@ -1,7 +1,6 @@
 bs4==0.0.2
 colorlog==6.9.0
 numpy==2.3.3
-openmeteo_requests==1.7.3
 osmnx==2.0.6
 pandas==2.3.3
 requests==2.32.5
